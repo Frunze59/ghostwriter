@@ -1,0 +1,28 @@
+services:
+
+  backend:
+    build:
+      context: ./backend
+      target: production
+    ports:
+      - "3001:3001"        # host:container — access backend at localhost:3001
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      # Pass the API key from your local .env file into the container
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      target: production
+    ports:
+      - "80:80"            # access app at http://localhost
+    depends_on:
+      backend:
+        condition: service_healthy   # wait for backend to pass health check
