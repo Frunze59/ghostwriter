@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import generateRouter from './routes/generate.route';
 
 // Load .env file into process.env BEFORE anything else reads env vars
 dotenv.config();
@@ -21,6 +22,10 @@ app.use(cors({
 
 // Parse incoming JSON request bodies
 app.use(express.json());
+
+// --- API routes ---
+// All content generation endpoints live under /api
+app.use('/api', generateRouter);
 
 // --- Health check route ---
 // A simple GET that returns 200 OK — useful for Docker health checks
