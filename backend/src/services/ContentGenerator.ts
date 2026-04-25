@@ -111,7 +111,7 @@ export class ContentGenerator {
 
     // Allow overriding the model via env var so you can easily switch between
     // haiku (fast/cheap) and sonnet (higher quality) without code changes
-    this.model = process.env.CLAUDE_MODEL ?? 'claude-3-5-haiku-20241022';
+    this.model = process.env.CLAUDE_MODEL ?? 'claude-haiku-4-5-20251001';
     console.log(`[ContentGenerator] using model: ${this.model}`);
   }
 
