@@ -23,7 +23,6 @@ export type ContentType = 'blog_post' | 'email' | 'story' | 'social_media';
 export interface GenerationParams {
   temperature: number;  // 0.0–1.0: lower = more focused, higher = more creative
   max_tokens: number;   // hard cap on response length
-  top_p: number;        // nucleus sampling: diversity control (0.0–1.0)
 }
 
 // ─── Blog Post ─────────────────────────────────────────────────────────────────

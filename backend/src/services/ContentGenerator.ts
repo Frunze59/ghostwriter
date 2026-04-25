@@ -133,7 +133,6 @@ export class ContentGenerator {
           model: this.model,
           max_tokens: params.max_tokens,
           temperature: params.temperature,
-          top_p: params.top_p,
           system: prompt.system,
           messages: [{ role: 'user', content: prompt.user }],
         });

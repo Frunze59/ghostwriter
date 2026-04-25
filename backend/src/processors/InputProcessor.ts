@@ -188,7 +188,6 @@ export class InputProcessor {
     const generation_params: GenerationParams = {
       temperature: 0.7,
       max_tokens: wordsToTokens(finalWordTarget),
-      top_p: 0.9,
     };
 
     return {
@@ -243,7 +242,6 @@ export class InputProcessor {
     const generation_params: GenerationParams = {
       temperature: urgencyTempMap[urgency],
       max_tokens: 600,   // emails should be concise
-      top_p: 0.85,
     };
 
     return {
@@ -297,7 +295,6 @@ export class InputProcessor {
     const generation_params: GenerationParams = {
       temperature: 0.9,
       max_tokens: wordsToTokens(wordTarget),
-      top_p: 0.95,
     };
 
     return {
@@ -349,7 +346,6 @@ export class InputProcessor {
     const generation_params: GenerationParams = {
       temperature: 0.8,
       max_tokens: 400,   // social posts are short
-      top_p: 0.9,
     };
 
     return {
