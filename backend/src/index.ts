@@ -1,10 +1,13 @@
+import path from 'path';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import generateRouter from './routes/generate.route';
 
-// Load .env file into process.env BEFORE anything else reads env vars
-dotenv.config();
+// Load .env: repository root (matches Docker / cp .env.example .env) then
+// backend/.env (local dev). Second file wins if both exist.
+dotenv.config({ path: path.join(__dirname, '../../.env') });
+dotenv.config({ path: path.join(__dirname, '../.env'), override: true });
 
 const app = express();
 const PORT = process.env.PORT || 3001;

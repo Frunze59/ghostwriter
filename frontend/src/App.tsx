@@ -7,7 +7,7 @@ import type { ContentType } from './types';
 
 export default function App() {
   const [contentType, setContentType] = useState<ContentType>('blog_post');
-  const { status, text, metadata, error, generate, reset } = useGenerate();
+  const { status, text, processed, metadata, error, generate, reset } = useGenerate();
 
   function handleTypeChange(type: ContentType) {
     setContentType(type);
@@ -47,6 +47,7 @@ export default function App() {
             text={text}
             status={status}
             metadata={metadata}
+            processed={processed}
             error={error}
             onReset={reset}
           />

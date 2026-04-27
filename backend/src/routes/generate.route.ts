@@ -8,10 +8,13 @@
 import { Router, Request, Response } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import { InputProcessor, ValidationException } from '../processors/InputProcessor';
+import { OutputProcessor } from '../processors/OutputProcessor';
 import { PromptBuilder } from '../prompts/PromptBuilder';
 import { ContentGenerator } from '../services/ContentGenerator';
 import { RawInput } from '../types/content.types';
 import { initSSE, sendChunk, sendDone, sendError } from '../utils/sse';
+
+const outputProcessor = new OutputProcessor();
 
 const router    = Router();
 const processor = new InputProcessor();
@@ -91,9 +94,26 @@ router.post('/generate', async (req: Request, res: Response) => {
       (chunk) => sendChunk(res, chunk),   // called for every text delta
     );
 
-    // Stream complete — send metadata and close
-    console.log(`[generate] done. tokens in=${result.metadata.input_tokens} out=${result.metadata.output_tokens}`);
-    sendDone(res, result.metadata);
+    // ── Step 6: post-process ────────────────────────────────────────────────
+    // Extract word target if available (only blog_post and story have one)
+    const wordTarget = 'specifications' in normalized &&
+      'word_target' in (normalized as { specifications: { word_target?: number } }).specifications
+        ? (normalized as { specifications: { word_target: number } }).specifications.word_target
+        : null;
+
+    const processed = outputProcessor.process(
+      result.full_text,
+      normalized.content_type,
+      wordTarget,
+    );
+
+    console.log(
+      `[generate] done. tokens in=${result.metadata.input_tokens} ` +
+      `out=${result.metadata.output_tokens} words=${processed.word_count} ` +
+      `artifacts_removed=${processed.validation.artifacts_removed}`,
+    );
+
+    sendDone(res, result.metadata, processed);
 
   } catch (err) {
     console.error('[generate] error during generation:', err);

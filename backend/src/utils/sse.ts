@@ -13,7 +13,8 @@
 //   { type: 'error',    message: string, code?: string }     — something went wrong
 
 import { Response } from 'express';
-import { GenerationMetadata } from '../services/ContentGenerator';
+import type { GenerationMetadata } from '../services/ContentGenerator';
+import type { ProcessedOutput } from '../processors/OutputProcessor';
 
 // Call this before writing any events — sets the required HTTP headers
 export function initSSE(res: Response): void {
@@ -30,9 +31,13 @@ export function sendChunk(res: Response, text: string): void {
   res.write(`data: ${JSON.stringify({ type: 'chunk', text })}\n\n`);
 }
 
-// Send the completion event with metadata
-export function sendDone(res: Response, metadata: GenerationMetadata): void {
-  res.write(`data: ${JSON.stringify({ type: 'done', metadata })}\n\n`);
+// Send the completion event — includes both AI metadata and post-processed output
+export function sendDone(
+  res: Response,
+  metadata: GenerationMetadata,
+  processed: ProcessedOutput,
+): void {
+  res.write(`data: ${JSON.stringify({ type: 'done', metadata, processed })}\n\n`);
   res.end();
 }
 

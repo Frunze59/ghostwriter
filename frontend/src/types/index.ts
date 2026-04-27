@@ -4,7 +4,7 @@ export type ContentType = 'blog_post' | 'email' | 'story' | 'social_media';
 
 export type GenerationStatus = 'idle' | 'generating' | 'done' | 'error';
 
-// What streams back from the server
+// AI usage metadata from the Anthropic API
 export interface GenerationMetadata {
   model: string;
   input_tokens: number;
@@ -12,10 +12,32 @@ export interface GenerationMetadata {
   content_type: string;
 }
 
+// Post-processing validation report
+export interface ValidationResult {
+  word_count_ok: boolean;
+  word_count_delta_pct: number | null;
+  missing_sections: string[];
+  artifacts_removed: number;
+}
+
+// Processed output from the OutputProcessor (mirrors backend type)
+export interface ProcessedOutput {
+  cleaned_text: string;
+  title: string | null;
+  word_count: number;
+  estimated_read_time: string;
+  validation: ValidationResult;
+  exports: {
+    markdown: string;
+    plain_text: string;
+  };
+}
+
 // The state managed by useGenerate
 export interface GenerationState {
   status: GenerationStatus;
-  text: string;                        // accumulated output so far
+  text: string;                          // raw streamed text (shown while generating)
+  processed: ProcessedOutput | null;     // cleaned + parsed (available after done)
   metadata: GenerationMetadata | null;
   error: string | null;
 }
@@ -25,9 +47,8 @@ export interface ContentTypeCard {
   id: ContentType;
   label: string;
   description: string;
-  icon: string;                        // emoji — simple and zero-dependency
+  icon: string;
 }
 
 // Raw form values — keyed by field name, value always a string or boolean
-// (we let the backend normalize everything)
 export type FormValues = Record<string, string | boolean>;

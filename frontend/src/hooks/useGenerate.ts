@@ -1,9 +1,10 @@
 import { useState, useCallback, useRef } from 'react';
-import type { FormValues, GenerationState, GenerationMetadata } from '../types';
+import type { FormValues, GenerationState, GenerationMetadata, ProcessedOutput } from '../types';
 
 const INITIAL_STATE: GenerationState = {
   status: 'idle',
   text: '',
+  processed: null,
   metadata: null,
   error: null,
 };
@@ -11,18 +12,15 @@ const INITIAL_STATE: GenerationState = {
 export function useGenerate() {
   const [state, setState] = useState<GenerationState>(INITIAL_STATE);
 
-  // We keep a ref to the reader so we can cancel mid-stream if the user
-  // clicks "Stop" or navigates away
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
 
   const generate = useCallback(async (formValues: FormValues) => {
-    // Cancel any in-progress stream before starting a new one
     if (readerRef.current) {
       await readerRef.current.cancel();
       readerRef.current = null;
     }
 
-    setState({ status: 'generating', text: '', metadata: null, error: null });
+    setState({ status: 'generating', text: '', processed: null, metadata: null, error: null });
 
     try {
       const response = await fetch('/api/generate', {
@@ -31,7 +29,6 @@ export function useGenerate() {
         body: JSON.stringify(formValues),
       });
 
-      // If validation failed before SSE opened, we get a regular JSON error
       if (!response.ok) {
         const err = await response.json();
         const message = err.errors?.[0]?.message ?? 'Generation failed';
@@ -39,7 +36,6 @@ export function useGenerate() {
         return;
       }
 
-      // Read the SSE stream
       const reader = response.body!.getReader();
       readerRef.current = reader;
       const decoder = new TextDecoder();
@@ -49,12 +45,7 @@ export function useGenerate() {
         const { done, value } = await reader.read();
         if (done) break;
 
-        // Decode the incoming bytes and append to the buffer
         buffer += decoder.decode(value, { stream: true });
-
-        // SSE events are separated by double newlines: "data: {...}\n\n"
-        // We split on \n\n to extract complete events, keeping any partial
-        // event at the end of the buffer for the next iteration
         const parts = buffer.split('\n\n');
         buffer = parts.pop() ?? '';
 
@@ -63,22 +54,25 @@ export function useGenerate() {
           if (!line.startsWith('data: ')) continue;
 
           try {
-            const event = JSON.parse(line.slice(6));  // strip "data: "
+            const event = JSON.parse(line.slice(6));
 
             if (event.type === 'chunk') {
-              // Append the new text delta to what we have so far
               setState(s => ({ ...s, text: s.text + event.text }));
             } else if (event.type === 'done') {
+              const processed = event.processed as ProcessedOutput;
               setState(s => ({
                 ...s,
                 status: 'done',
+                // Replace raw streamed text with the cleaned version from OutputProcessor
+                text: processed?.cleaned_text ?? s.text,
+                processed,
                 metadata: event.metadata as GenerationMetadata,
               }));
             } else if (event.type === 'error') {
               setState(s => ({ ...s, status: 'error', error: event.message }));
             }
           } catch {
-            // Malformed JSON in SSE event — skip silently
+            // Malformed JSON — skip
           }
         }
       }

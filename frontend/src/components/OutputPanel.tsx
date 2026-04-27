@@ -2,17 +2,18 @@ import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Copy, Download, Edit3, Eye, RotateCcw, CheckCheck } from 'lucide-react';
-import type { GenerationStatus, GenerationMetadata } from '../types';
+import type { GenerationStatus, GenerationMetadata, ProcessedOutput } from '../types';
 
 interface Props {
   text: string;
   status: GenerationStatus;
   metadata: GenerationMetadata | null;
+  processed: ProcessedOutput | null;
   error: string | null;
   onReset: () => void;
 }
 
-export function OutputPanel({ text, status, metadata, error, onReset }: Props) {
+export function OutputPanel({ text, status, metadata, processed, error, onReset }: Props) {
   const [isEditing, setIsEditing]   = useState(false);
   const [edited, setEdited]         = useState('');
   const [copied, setCopied]         = useState(false);
@@ -131,12 +132,34 @@ export function OutputPanel({ text, status, metadata, error, onReset }: Props) {
   );
 
   // ── Metadata strip ───────────────────────────────────────────────────────────
-  const metaStrip = isDone && metadata && (
+  const metaStrip = isDone && (
     <div className="px-4 py-2 text-xs text-gray-400 border-t border-gray-100 bg-gray-50/50
-                    flex gap-4 flex-wrap">
-      <span>Model: <span className="font-medium text-gray-500">{metadata.model}</span></span>
-      <span>Tokens in: <span className="font-medium text-gray-500">{metadata.input_tokens}</span></span>
-      <span>Tokens out: <span className="font-medium text-gray-500">{metadata.output_tokens}</span></span>
+                    flex gap-4 flex-wrap items-center">
+      {processed && (
+        <>
+          <span className="font-medium text-gray-600">{processed.word_count} words</span>
+          <span>{processed.estimated_read_time}</span>
+          {processed.validation.word_count_delta_pct !== null && (
+            <span className={processed.validation.word_count_ok ? 'text-green-500' : 'text-amber-500'}>
+              {processed.validation.word_count_ok ? '✓' : '⚠'} target{' '}
+              {processed.validation.word_count_delta_pct > 0 ? '+' : ''}
+              {processed.validation.word_count_delta_pct}%
+            </span>
+          )}
+          {processed.validation.artifacts_removed > 0 && (
+            <span className="text-violet-400">
+              ✦ {processed.validation.artifacts_removed} artifact{processed.validation.artifacts_removed > 1 ? 's' : ''} cleaned
+            </span>
+          )}
+          <span className="ml-auto" />
+        </>
+      )}
+      {metadata && (
+        <>
+          <span>{metadata.model}</span>
+          <span>{metadata.input_tokens}→{metadata.output_tokens} tokens</span>
+        </>
+      )}
     </div>
   );
 
