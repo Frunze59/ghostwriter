@@ -6,11 +6,11 @@ services:
       target: production
     ports:
       - "3001:3001"        # host:container — access backend at localhost:3001
+    env_file:
+      - .env
     environment:
       - NODE_ENV=production
       - PORT=3001
-      # Pass the API key from your local .env file into the container
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
       interval: 30s
