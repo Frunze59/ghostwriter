@@ -7,12 +7,20 @@ const INITIAL_STATE: GenerationState = {
   processed: null,
   metadata: null,
   error: null,
+  fieldErrors: {},
 };
 
 export function useGenerate() {
   const [state, setState] = useState<GenerationState>(INITIAL_STATE);
-
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+
+  const stop = useCallback(async () => {
+    if (readerRef.current) {
+      await readerRef.current.cancel();
+      readerRef.current = null;
+    }
+    setState(s => s.status === 'generating' ? { ...s, status: 'done' } : s);
+  }, []);
 
   const generate = useCallback(async (formValues: FormValues) => {
     if (readerRef.current) {
@@ -20,7 +28,7 @@ export function useGenerate() {
       readerRef.current = null;
     }
 
-    setState({ status: 'generating', text: '', processed: null, metadata: null, error: null });
+    setState({ status: 'generating', text: '', processed: null, metadata: null, error: null, fieldErrors: {} });
 
     try {
       const response = await fetch('/api/generate', {
@@ -31,8 +39,10 @@ export function useGenerate() {
 
       if (!response.ok) {
         const err = await response.json();
-        const message = err.errors?.[0]?.message ?? 'Generation failed';
-        setState(s => ({ ...s, status: 'error', error: message }));
+        const errors: { field: string; message: string }[] = err.errors ?? [];
+        const fieldErrors = Object.fromEntries(errors.map(e => [e.field, e.message]));
+        const message = errors[0]?.message ?? 'Generation failed';
+        setState(s => ({ ...s, status: 'error', error: message, fieldErrors }));
         return;
       }
 
@@ -63,7 +73,6 @@ export function useGenerate() {
               setState(s => ({
                 ...s,
                 status: 'done',
-                // Replace raw streamed text with the cleaned version from OutputProcessor
                 text: processed?.cleaned_text ?? s.text,
                 processed,
                 metadata: event.metadata as GenerationMetadata,
@@ -72,7 +81,7 @@ export function useGenerate() {
               setState(s => ({ ...s, status: 'error', error: event.message }));
             }
           } catch {
-            // Malformed JSON — skip
+            // malformed JSON — skip
           }
         }
       }
@@ -84,11 +93,22 @@ export function useGenerate() {
     }
   }, []);
 
+  const restore = useCallback((processed: ProcessedOutput, metadata: GenerationMetadata) => {
+    setState({
+      status: 'done',
+      text: processed.cleaned_text,
+      processed,
+      metadata,
+      error: null,
+      fieldErrors: {},
+    });
+  }, []);
+
   const reset = useCallback(() => {
     readerRef.current?.cancel();
     readerRef.current = null;
     setState(INITIAL_STATE);
   }, []);
 
-  return { ...state, generate, reset };
+  return { ...state, generate, stop, restore, reset };
 }

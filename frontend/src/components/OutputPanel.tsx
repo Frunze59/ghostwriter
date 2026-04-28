@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Copy, Download, Edit3, Eye, RotateCcw, CheckCheck } from 'lucide-react';
+import { Copy, Download, Edit3, Eye, RotateCcw, CheckCheck, Square } from 'lucide-react';
 import type { GenerationStatus, GenerationMetadata, ProcessedOutput } from '../types';
 
 interface Props {
@@ -11,20 +11,19 @@ interface Props {
   processed: ProcessedOutput | null;
   error: string | null;
   onReset: () => void;
+  onStop: () => void;
 }
 
-export function OutputPanel({ text, status, metadata, processed, error, onReset }: Props) {
-  const [isEditing, setIsEditing]   = useState(false);
-  const [edited, setEdited]         = useState('');
-  const [copied, setCopied]         = useState(false);
+export function OutputPanel({ text, status, metadata, processed, error, onReset, onStop }: Props) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [edited, setEdited]       = useState('');
+  const [copied, setCopied]       = useState(false);
 
-  // When generation finishes, seed the editor with the generated text
-  // so edits start from the full content
   const displayText = isEditing ? edited : text;
   const isDone      = status === 'done';
 
   function handleEditToggle() {
-    if (!isEditing) setEdited(text);   // copy current output into editor
+    if (!isEditing) setEdited(text);
     setIsEditing(v => !v);
   }
 
@@ -49,8 +48,8 @@ export function OutputPanel({ text, status, metadata, processed, error, onReset 
   }
 
   function handlePrint() {
-    const content  = isEditing ? edited : text;
-    const win      = window.open('', '_blank')!;
+    const content = isEditing ? edited : text;
+    const win     = window.open('', '_blank')!;
     win.document.write(`
       <html><head><title>Ghostwriter Export</title>
       <style>
@@ -65,7 +64,6 @@ export function OutputPanel({ text, status, metadata, processed, error, onReset 
     win.close();
   }
 
-  // ── Empty / error states ────────────────────────────────────────────────────
   if (status === 'idle') {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center p-8 text-gray-300">
@@ -90,10 +88,8 @@ export function OutputPanel({ text, status, metadata, processed, error, onReset 
     );
   }
 
-  // ── Toolbar ─────────────────────────────────────────────────────────────────
   const toolbar = isDone && (
     <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-gray-100 bg-gray-50/50">
-      {/* Edit / Preview toggle */}
       <button onClick={handleEditToggle}
         className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-gray-200
                    text-gray-500 hover:text-violet-600 hover:border-violet-300 transition-colors">
@@ -102,7 +98,6 @@ export function OutputPanel({ text, status, metadata, processed, error, onReset 
 
       <div className="flex-1" />
 
-      {/* Export actions */}
       <button onClick={handleCopy}
         className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-gray-200
                    text-gray-500 hover:text-violet-600 hover:border-violet-300 transition-colors">
@@ -131,7 +126,6 @@ export function OutputPanel({ text, status, metadata, processed, error, onReset 
     </div>
   );
 
-  // ── Metadata strip ───────────────────────────────────────────────────────────
   const metaStrip = isDone && (
     <div className="px-4 py-2 text-xs text-gray-400 border-t border-gray-100 bg-gray-50/50
                     flex gap-4 flex-wrap items-center">
@@ -163,10 +157,21 @@ export function OutputPanel({ text, status, metadata, processed, error, onReset 
     </div>
   );
 
-  // ── Content area ─────────────────────────────────────────────────────────────
   return (
     <div className="h-full flex flex-col">
       {toolbar}
+
+      {status === 'generating' && (
+        <div className="flex items-center justify-end px-4 py-1.5 border-b border-gray-100 bg-gray-50/50">
+          <button
+            onClick={onStop}
+            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border border-red-200
+                       text-red-500 hover:bg-red-50 hover:border-red-300 transition-colors"
+          >
+            <Square size={11} fill="currentColor" /> Stop
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         {isEditing ? (
@@ -181,7 +186,6 @@ export function OutputPanel({ text, status, metadata, processed, error, onReset 
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {displayText}
             </ReactMarkdown>
-            {/* Blinking cursor while streaming */}
             {status === 'generating' && (
               <span className="inline-block w-0.5 h-4 bg-violet-500 animate-pulse ml-0.5 align-middle" />
             )}
